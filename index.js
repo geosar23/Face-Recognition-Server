@@ -1,5 +1,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
+const bcrypt = require("bcrypt-nodejs");
 
 const app = express();
 app.use(bodyParser.json());
@@ -68,8 +69,6 @@ app.get("/user/:id", (req, res) => {
 app.post("/signin", (req, res) => {
     try {
 
-        console.log(req.body)
-
         if(!req.body || !req.body.email || !req.body.password) {
             throw new Error("Request parameters are missing");
         }
@@ -77,24 +76,32 @@ app.post("/signin", (req, res) => {
         const email = req.body.email;
         const password = req.body.password;
 
-        let exists = false;
-        for(const user of database.users) {
-            if( (email === user.email) && (password === user.password) ) {
-                exists = true;
-                res.json({
-                        user,
-                    success: true
-                });
-            }
-        }
+        const found = database.users.find(user => user.email === email)
 
-        if(!exists) {
-            res.json({
+        if(!found) {
+            return res.json({
                 success:false,
                 message: "Incorrect credentials"
             })
         }
-        
+
+        console.log("found user:", found)
+
+        if(password === found.password) {
+            return res.json(found);
+        }
+
+        bcrypt.compare(password, found.password, function(err, answer) {
+            if(!answer){
+                return res.json({
+                    success:false,
+                    message: "Incorrect credentials"
+                })
+            }
+
+            return res.json(found)
+        });
+
     } catch (error) {
         console.log({
             success: false,
@@ -106,7 +113,7 @@ app.post("/signin", (req, res) => {
     }
 })
 
-app.post("/register", (req, res) => {
+app.post("/register", async(req, res) => {
     
     if(!req.body || !req.body.email || !req.body.password || !req.body.name ){
         res.json({
@@ -116,6 +123,14 @@ app.post("/register", (req, res) => {
     }
 
     const { email, name, password } = req.body;
+
+    let hashedPassword = password;
+    await bcrypt.hash(password, null, null, function(err, hash) {
+        console.log("hash",hash)
+        hashedPassword = hash;
+    });
+
+    console.log("hashed password",hashedPassword)
 
     let exists = false
     let reason = "";
@@ -143,7 +158,7 @@ app.post("/register", (req, res) => {
         database.users.push({
             id: `${counter+1}`,
             name: name,
-            password: password,
+            password: hashedPassword,
             email: email,
             entries: 0,
             score: 0,
@@ -173,3 +188,16 @@ app.post("/image", (req, res) => {
         res.status(400).json('not found');
     }
 })
+
+// //---------------------------------------------------------
+// bcrypt.hash("bacon", null, null, function(err, hash) {
+//     // Store hash in your password DB.
+// });
+
+// // Load hash from your password DB.
+// bcrypt.compare("bacon", hash, function(err, res) {
+//     // res == true
+// });
+// bcrypt.compare("veggies", hash, function(err, res) {
+//     // res = false
+// });
