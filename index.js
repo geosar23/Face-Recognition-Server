@@ -118,64 +118,81 @@ app.post("/signin", (req, res) => {
             message: error,
             error: error,
         })
-        res.send({success: false});
+        return res.send({success: false});
     }
 })
 
 app.post("/register", async(req, res) => {
+
+    try {
+
+        if(!req.body || !req.body.email || !req.body.password || !req.body.name ){
+            res.json({
+                success: false,
+                message: "Incorrect parameters"
+            });
+        }
     
-    if(!req.body || !req.body.email || !req.body.password || !req.body.name ){
-        res.json({
-            success: false,
-            message: "Incorrect parameters"
+        const { email, name, password } = req.body;
+    
+        let hashedPassword = password;
+        bcrypt.hash(password, null, null, function(err, hash) {
+            console.log("hash",hash)
+            hashedPassword = hash;
         });
-    }
-
-    const { email, name, password } = req.body;
-
-    let hashedPassword = password;
-    await bcrypt.hash(password, null, null, function(err, hash) {
-        console.log("hash",hash)
-        hashedPassword = hash;
-    });
-
-    console.log("hashed password",hashedPassword)
-
-    let exists = false
-    let reason = "";
-    for(const user of database.users) {
-        if(email === user.email) {
-            exists = true;
-            reason = "email already in use"
+    
+        console.log("hashed password",hashedPassword)
+    
+        let exists = false
+        let reason = "";
+        for(const user of database.users) {
+            if(email === user.email) {
+                exists = true;
+                reason = "email already in use"
+            }
+    
+            if(name === user.name) {
+                exists = true;
+                reason = "name already in use"
+            }
         }
-
-        if(name === user.name) {
-            exists = true;
-            reason = "name already in use"
+    
+        if(exists) {
+            return res.json({
+                success: false,
+                message: reason
+            })
         }
-    }
-
-    if(exists) {
-        res.json({
+    
+        if(!exists){
+            const counter = database.users?.length || 0; 
+    
+            const newUser = {
+                id: `${counter+1}`,
+                name: name,
+                password: hashedPassword,
+                email: email,
+                entries: 0,
+                score: 0,
+                joined: new Date()
+            }
+    
+            database.users.push(newUser);
+    
+            return res.json({
+                success: true,
+                user: newUser
+            })
+        }
+        
+    } catch (error) {
+        console.log({
             success: false,
-            message: reason
+            route:"/register",
+            message: error,
+            error: error,
         })
-    }
-
-    if(!exists){
-        const counter = database.users?.length || 0; 
-        database.users.push({
-            id: `${counter+1}`,
-            name: name,
-            password: hashedPassword,
-            email: email,
-            entries: 0,
-            score: 0,
-            joined: new Date()
-        })
-        res.json({
-            success: true,
-        })
+        return res.send({success: false});
     }
 })
 
