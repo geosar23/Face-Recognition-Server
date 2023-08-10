@@ -1,3 +1,2 @@
 # Face-Recognition-Server
-## Run with 
-`npm start`
+## Run with `npm start`
