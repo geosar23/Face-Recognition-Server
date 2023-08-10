@@ -1,9 +1,11 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const bcrypt = require("bcrypt-nodejs");
+const cors = require("cors");
 
 const app = express();
 app.use(bodyParser.json());
+app.use(cors());
 
 //Init Database
 const database = {
@@ -39,11 +41,15 @@ const database = {
 }
 
 //Init Server
-app.listen(3003, () => {
-    console.log("Server online on port 3003")
+app.listen(5000, () => {
+    console.log("Server online on port 5000")
 })
 
 //Get requests
+app.get("/", (req, res) => {
+    res.send("Server is running on port 5000");
+});
+
 app.get("/users", (req, res) => {
     res.send(database.users);
 })
@@ -61,7 +67,7 @@ app.get("/user/:id", (req, res) => {
     })
 
     if(!found){
-        res.status(400).json("not found");
+        res.status(404).json("not found");
     }
 })
 
@@ -88,7 +94,10 @@ app.post("/signin", (req, res) => {
         console.log("found user:", found)
 
         if(password === found.password) {
-            return res.json(found);
+            return res.json({
+                user: found,
+                success:true
+            });
         }
 
         bcrypt.compare(password, found.password, function(err, answer) {
