@@ -94,6 +94,10 @@ app.post("/signin", (req, res) => {
         console.log("found user:", found)
 
         if(password === found.password) {
+
+            //before returning the user increase the entries
+            found.entries++
+
             return res.json({
                 user: found,
                 success:true
@@ -146,14 +150,14 @@ app.post("/register", async(req, res) => {
         let exists = false
         let reason = "";
         for(const user of database.users) {
-            if(email === user.email) {
-                exists = true;
-                reason = "email already in use"
-            }
-    
             if(name === user.name) {
                 exists = true;
                 reason = "name already in use"
+            }
+
+            if(email === user.email) {
+                exists = true;
+                reason = "email already in use"
             }
         }
     
