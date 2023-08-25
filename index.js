@@ -200,17 +200,23 @@ app.post("/register", async(req, res) => {
     }
 })
 
-app.post("/image", (req, res) => {
+app.put("/image", (req, res) => {
 
-    const { id } = req.body;
+    const { id, score } = req.body;
 
     let found = false;
 
     database.users.forEach(user => {
         if(user.id === id){
             found = true;
-            user.entries++
-            return res.json(user.entries);
+            
+            const newScore = user.score + score;
+            user.score = newScore
+
+            return res.json({
+                success: true,
+                score: newScore
+            })
         }
     })
 
