@@ -112,7 +112,10 @@ app.post("/signin", (req, res) => {
                 })
             }
 
-            return res.json(found)
+            return res.json({
+                user: found,
+                success:true
+            });
         });
 
     } catch (error) {
@@ -224,6 +227,43 @@ app.put("/image", (req, res) => {
         res.status(400).json('not found');
     }
 })
+
+app.post("/user/:id", (req, res) => {
+
+    try {
+        const { id } = req.params;
+
+        let foundIndex = -1;
+        
+        // Find the index of the user with the given ID
+        for (let i = 0; i < database.users.length; i++) {
+            if (database.users[i].id === id) {
+                console.log(database.users[i], i, "found")
+                foundIndex = i;
+                break;
+            }
+        }
+    
+        if (foundIndex === -1) {
+            return res.status(404).json("User not found");
+        }
+    
+        // Remove the user from the array using the found index
+        database.users.splice(foundIndex, 1);
+    
+        return res.json({ success: true });
+        
+    } catch (error) {
+        console.log({
+            success: false,
+            route:"/register",
+            message: error.message,
+            error: error,
+        })
+        return res.send({success: false, message:error.message});
+    }
+});
+
 
 // //---------------------------------------------------------
 // bcrypt.hash("bacon", null, null, function(err, hash) {
