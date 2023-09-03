@@ -82,26 +82,13 @@ app.post("/signin", (req, res) => {
         const email = req.body.email;
         const password = req.body.password;
 
-        const found = database.users.find(user => user.email === email)
+        const found = database.users.find(user => user.email === email);
 
         if(!found) {
             return res.json({
                 success:false,
                 message: "Incorrect credentials"
             })
-        }
-
-        console.log("found user:", found)
-
-        if(password === found.password) {
-
-            //before returning the user increase the entries
-            found.entries++
-
-            return res.json({
-                user: found,
-                success:true
-            });
         }
 
         bcrypt.compare(password, found.password, function(err, answer) {
@@ -112,6 +99,9 @@ app.post("/signin", (req, res) => {
                 })
             }
 
+            //before returning the user increase the entries
+            found.entries++
+
             return res.json({
                 user: found,
                 success:true
@@ -119,13 +109,8 @@ app.post("/signin", (req, res) => {
         });
 
     } catch (error) {
-        console.log({
-            success: false,
-            route:"/signin",
-            message: error,
-            error: error,
-        })
-        return res.send({success: false});
+        console.log(error);
+        return res.send({success: false, message:error.message});
     }
 })
 
@@ -134,7 +119,7 @@ app.post("/register", async(req, res) => {
     try {
 
         if(!req.body || !req.body.email || !req.body.password || !req.body.name ){
-            res.json({
+            return res.json({
                 success: false,
                 message: "Incorrect parameters"
             });
@@ -142,25 +127,19 @@ app.post("/register", async(req, res) => {
     
         const { email, name, password } = req.body;
     
-        let hashedPassword = password;
-        bcrypt.hash(password, null, null, function(err, hash) {
-            console.log("hash",hash)
-            hashedPassword = hash;
-        });
-    
-        console.log("hashed password",hashedPassword)
-    
         let exists = false
         let reason = "";
         for(const user of database.users) {
             if(name === user.name) {
                 exists = true;
                 reason = "name already in use"
+                break;
             }
 
             if(email === user.email) {
                 exists = true;
                 reason = "email already in use"
+                break;
             }
         }
     
@@ -172,6 +151,12 @@ app.post("/register", async(req, res) => {
         }
     
         if(!exists){
+
+            const hashedPassword = await hashPassword(password);
+            if(!hashedPassword) {
+                throw new Error("Password hashing failed");
+            }
+
             const counter = database.users?.length || 0; 
     
             const newUser = {
@@ -185,7 +170,8 @@ app.post("/register", async(req, res) => {
             }
     
             database.users.push(newUser);
-    
+            console.log(newUser)
+
             return res.json({
                 success: true,
                 user: newUser
@@ -193,13 +179,8 @@ app.post("/register", async(req, res) => {
         }
         
     } catch (error) {
-        console.log({
-            success: false,
-            route:"/register",
-            message: error,
-            error: error,
-        })
-        return res.send({success: false});
+        console.log(error);
+        return res.send({success: false, message:error.message});
     }
 })
 
@@ -254,16 +235,22 @@ app.post("/user/:id", (req, res) => {
         return res.json({ success: true });
         
     } catch (error) {
-        console.log({
-            success: false,
-            route:"/register",
-            message: error.message,
-            error: error,
-        })
+        console.log(error);
         return res.send({success: false, message:error.message});
     }
 });
 
+function hashPassword(password) {
+    return new Promise((resolve, reject) => {
+      bcrypt.hash(password, null, null, (err, hash) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(hash);
+        }
+      });
+    });
+}
 
 // //---------------------------------------------------------
 // bcrypt.hash("bacon", null, null, function(err, hash) {
