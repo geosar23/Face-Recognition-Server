@@ -2,43 +2,23 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const bcrypt = require("bcrypt-nodejs");
 const cors = require("cors");
+const knex = require('knex');
+
+//Connect to DB
+const DB = knex({
+    client: 'pg',
+    connection: {
+      host : '127.0.0.1',
+      port : 5432,
+      user : 'postgres',
+      password : 'postgres5991',
+      database : 'Face-Recognition-App'
+    }
+});
 
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
-
-//Init Database
-const database = {
-    users: [
-        {
-            id: "1",
-            name: "superadmin",
-            email: "superadmin@gmail.com",
-            password: "superadmin",
-            entries: 0,
-            score: 0,
-            joined: new Date()
-        },
-        {
-            id: "2",
-            name: "admin",
-            email: "admin@gmail.com",
-            password: "admin",
-            entries: 0,
-            score: 0,
-            joined: new Date()
-        },
-        {
-            id: "3",
-            name: "test-user1",
-            email: "test-user1@gmail.com",
-            password: "test-user1",
-            entries: 0,
-            score: 0,
-            joined: new Date()
-        },
-    ]
-}
 
 //Init Server
 app.listen(5000, () => {
@@ -50,29 +30,43 @@ app.get("/", (req, res) => {
     res.send("Server is running on port 5000");
 });
 
-app.get("/users", (req, res) => {
-    res.send(database.users);
+app.get("/users", async (req, res) => {
+    try {        
+        const users = await DB.select('*').from('users');
+
+        if(!users){
+            throw new Error("Users not found");
+        }
+
+        return res.json(users)
+        
+    } catch (error) {
+        console.log(error);
+        return res.send({success: false, message:error.message});
+    }
 })
 
-app.get("/user/:id", (req, res) => {
-    const { id } = req.params;
+app.get("/user/:id", async (req, res) => {
+    try {
 
-    let found = false;
-    
-    database.users.forEach(user => {
-        if(user.id === id) {
-            found = true;
-            return res.json(user);
+        const { id } = req.params;
+        
+        const user = await DB.select('*').from('users').where('id', id).first();
+
+        if(!user){
+            throw new Error("User not found");
         }
-    })
 
-    if(!found){
-        res.status(404).json("not found");
+        return res.json(user)
+        
+    } catch (error) {
+        console.log(error);
+        return res.send({success: false, message:error.message});
     }
 })
 
 //Post requests
-app.post("/signin", (req, res) => {
+app.post("/signin", async(req, res) => {
     try {
 
         if(!req.body || !req.body.email || !req.body.password) {
@@ -82,28 +76,33 @@ app.post("/signin", (req, res) => {
         const email = req.body.email;
         const password = req.body.password;
 
-        const found = database.users.find(user => user.email === email);
+        // Check if the user and login entry with the provided email exists in the database
+        const user = await DB('users').where({ email }).first();
+        const login = await DB('login').where({ email }).first();
 
-        if(!found) {
+        if(!user || !login) {
             return res.json({
                 success:false,
-                message: "Incorrect credentials"
+                message: "Incorrect credentials1"
             })
         }
 
-        bcrypt.compare(password, found.password, function(err, answer) {
+        bcrypt.compare(password, login.hash, async function(err, answer) {
             if(!answer){
                 return res.json({
                     success:false,
-                    message: "Incorrect credentials"
+                    message: "Incorrect credentials2"
                 })
             }
 
-            //before returning the user increase the entries
-            found.entries++
+            // Update the user's entries count
+            const updatedUser = { ...user, entries: parseInt(user.entries) + 1 };
+
+            // Update the user's entries count in the database
+            await DB('users').where({ email }).update(updatedUser);
 
             return res.json({
-                user: found,
+                user: updatedUser,
                 success:true
             });
         });
@@ -127,112 +126,51 @@ app.post("/register", async(req, res) => {
     
         const { email, name, password } = req.body;
     
-        let exists = false
-        let reason = "";
-        for(const user of database.users) {
-            if(name === user.name) {
-                exists = true;
-                reason = "name already in use"
-                break;
-            }
+        const userWithEmail = await DB('users').where({ email }).first();
+        const userWithName = await DB('users').where({ name }).first();
 
-            if(email === user.email) {
-                exists = true;
-                reason = "email already in use"
-                break;
-            }
-        }
-    
-        if(exists) {
+        if (userWithEmail || userWithName) {
             return res.json({
                 success: false,
-                message: reason
-            })
+                message: userWithEmail ? "Email already in use" : "Name already in use"
+            });
         }
     
-        if(!exists){
-
-            const hashedPassword = await hashPassword(password);
-            if(!hashedPassword) {
-                throw new Error("Password hashing failed");
-            }
-
-            const counter = database.users?.length || 0; 
-    
-            const newUser = {
-                id: `${counter+1}`,
-                name: name,
-                password: hashedPassword,
-                email: email,
-                entries: 0,
-                score: 0,
-                joined: new Date()
-            }
-    
-            database.users.push(newUser);
-            console.log(newUser)
-
-            return res.json({
-                success: true,
-                user: newUser
-            })
+        const hashedPassword = await hashPassword(password);
+        if(!hashedPassword) {
+            throw new Error("Password hashing failed");
         }
+
+        let newUser = {
+            name: name,
+            email: email,
+            joined: new Date()
+        }
+
+        const newLogin = {
+            hash: hashedPassword,
+            email: email
+        }
+
+        //Knex transactions make sure that if one DB operation fails, 
+        //others fail as well so we do not add non completed entries in our database
+        await DB.transaction(trx => {
+
+            //Insert new login entry
+            trx.insert(newLogin).into('login').returning('email').then((email) => {
+
+                //Insert new user entry
+                return trx('users').returning('*').insert(newUser);
+            }).then(trx.commit).catch(trx.rollback);
+        })
+
+        //Fetch new User and return;
+        newUser = await DB('users').where({ email }).first();
         
-    } catch (error) {
-        console.log(error);
-        return res.send({success: false, message:error.message});
-    }
-})
-
-app.put("/image", (req, res) => {
-
-    const { id, score } = req.body;
-
-    let found = false;
-
-    database.users.forEach(user => {
-        if(user.id === id){
-            found = true;
-            
-            const newScore = user.score + score;
-            user.score = newScore
-
-            return res.json({
-                success: true,
-                score: newScore
-            })
-        }
-    })
-
-    if(!found) {
-        res.status(400).json('not found');
-    }
-})
-
-app.post("/user/:id", (req, res) => {
-
-    try {
-        const { id } = req.params;
-
-        let foundIndex = -1;
-        
-        // Find the index of the user with the given ID
-        for (let i = 0; i < database.users.length; i++) {
-            if (database.users[i].id === id) {
-                console.log(database.users[i], i, "found")
-                foundIndex = i;
-                break;
-            }
-        }
-    
-        if (foundIndex === -1) {
-            return res.status(404).json("User not found");
-        }
-    
-        // Remove the user from the array using the found index
-        database.users.splice(foundIndex, 1);
-    
-        return res.json({ success: true });
+        return res.json({
+            success: true,
+            user: newUser
+        });
         
     } catch (error) {
         console.log(error);
@@ -240,6 +178,60 @@ app.post("/user/:id", (req, res) => {
     }
 });
 
+//Put requests
+app.put("/image", async (req, res) => {
+    try {
+
+        const { id, score } = req.body;
+
+        const user = await DB.select('*').from('users').where('id', id).first();
+
+        if(!user) {
+            throw new Error("User not found");
+        }
+        
+        const updatedScore = parseInt(user.score) + score;
+
+        const updatedUser = {...user, score:updatedScore};
+
+        // Update the user's entries count in the database
+        await DB('users').where({ id }).update(updatedUser);
+
+        return res.json({
+            success: true,
+            score: updatedScore
+        });
+     
+    } catch (error) {
+        console.log(error);
+        return res.send({success: false, message:error.message});
+    }
+})
+
+app.delete("/user/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Check if the user with the given ID exists in the database
+        const user = await DB('users').where({ id }).first();
+
+        if (!user) {
+            return res.status(404).json("User not found");
+        }
+
+        // Delete the user from the database
+        await DB('users').where({ id }).del();
+
+        return res.json({ success: true });
+
+    } catch (error) {
+        console.log(error);
+        return res.json({ success: false, message: error.message });
+    }
+});
+
+
+//Helper functions
 function hashPassword(password) {
     return new Promise((resolve, reject) => {
       bcrypt.hash(password, null, null, (err, hash) => {
