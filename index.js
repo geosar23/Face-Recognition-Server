@@ -83,7 +83,7 @@ app.post("/signin", async(req, res) => {
         if(!user || !login) {
             return res.json({
                 success:false,
-                message: "Incorrect credentials1"
+                message: "Incorrect credentials"
             })
         }
 
@@ -91,7 +91,7 @@ app.post("/signin", async(req, res) => {
             if(!answer){
                 return res.json({
                     success:false,
-                    message: "Incorrect credentials2"
+                    message: "Incorrect credentials"
                 })
             }
 
@@ -208,6 +208,7 @@ app.put("/image", async (req, res) => {
     }
 })
 
+//Delete Requests
 app.delete("/user/:id", async (req, res) => {
     try {
         const { id } = req.params;
@@ -219,8 +220,9 @@ app.delete("/user/:id", async (req, res) => {
             return res.status(404).json("User not found");
         }
 
-        // Delete the user from the database
-        await DB('users').where({ id }).del();
+        // Delete the user and his login from the database
+        await DB('users').where('email', user.email).del();
+        await DB('login').where('email', user.email).del();
 
         return res.json({ success: true });
 
