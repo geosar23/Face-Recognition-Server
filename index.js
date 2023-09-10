@@ -3,16 +3,17 @@ const bodyParser = require("body-parser");
 const bcrypt = require("bcrypt-nodejs");
 const cors = require("cors");
 const knex = require('knex');
+require('dotenv').config()
 
 //Connect to DB
 const DB = knex({
     client: 'pg',
     connection: {
-      host : '127.0.0.1',
-      port : 5432,
-      user : 'postgres',
-      password : 'postgres5991',
-      database : 'Face-Recognition-App'
+      host : process.env.DB_HOST,
+      port : process.env.DB_PORT,
+      user : process.env.DB_USER,
+      password : process.env.DB_PASSWORD,
+      database : process.env.DB_NAME
     }
 });
 
@@ -21,13 +22,13 @@ app.use(bodyParser.json());
 app.use(cors());
 
 //Init Server
-app.listen(5000, () => {
-    console.log("Server online on port 5000")
+app.listen(process.env.SERVER_PORT, () => {
+    console.log(`Server online on port ${process.env.SERVER_PORT}`)
 })
 
 //Get requests
 app.get("/", (req, res) => {
-    res.send("Server is running on port 5000");
+    res.send(`Server is running on port ${process.env.SERVER_PORT}`);
 });
 
 app.get("/users", async (req, res) => {
