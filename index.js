@@ -31,6 +31,22 @@ app.get("/", (req, res) => {
     res.send(`Server is running on port ${process.env.SERVER_PORT}`);
 });
 
+app.get("/serverKeys", async (req, res) => {
+    try {
+        const keys = {
+            CLARIFAI_PAT:  process.env.CLARIFAI_PAT,
+            CLARIFAI_USER_ID: process.env.CLARIFAI_USER_ID,
+            CLARIFAI_APP_ID: process.env.CLARIFAI_APP_ID,
+            CLARIFAI_MODEL_ID: process.env.CLARIFAI_MODEL_ID,
+            CLARIFAI_MODEL_VERSION_ID: process.env.CLARIFAI_MODEL_VERSION_ID
+        }
+        return res.json({success: true, data: keys});
+    } catch (error) {
+        console.log(error);
+        return res.send({success: false, message:error.message});
+    }
+});
+
 app.get("/users", async (req, res) => {
     try {        
         const users = await DB.select('*').from('users');
