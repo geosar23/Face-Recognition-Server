@@ -3,6 +3,7 @@ const bodyParser = require("body-parser");
 const bcrypt = require("bcrypt-nodejs");
 const cors = require("cors");
 const knex = require('knex');
+const morgan = require('morgan');
 require('dotenv').config()
 
 //Connect to DB
@@ -20,6 +21,7 @@ const DB = knex({
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
+app.use(morgan('combined'));
 
 //Init Server
 app.listen(process.env.SERVER_PORT, () => {
