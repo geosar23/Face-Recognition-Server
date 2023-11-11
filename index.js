@@ -4,6 +4,7 @@ const bcrypt = require("bcrypt-nodejs");
 const cors = require("cors");
 const knex = require('knex');
 const morgan = require('morgan');
+const helmet = require('helmet');
 require('dotenv').config()
 
 //Connect to DB
@@ -19,9 +20,10 @@ const DB = knex({
 });
 
 const app = express();
-app.use(bodyParser.json());
+app.use(helmet());
 app.use(cors());
-app.use(morgan('combined'));
+app.use(bodyParser.json());
+app.use(morgan('dev'));
 
 //Init Server
 app.listen(process.env.SERVER_PORT, () => {
