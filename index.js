@@ -5,7 +5,11 @@ const cors = require("cors");
 const knex = require('knex');
 const morgan = require('morgan');
 const helmet = require('helmet');
+const jwt = require('jsonwebtoken');
 require('dotenv').config()
+
+//jwt secret key
+const jwtKey = process.env.JWT_SECRET_KEY;
 
 //Connect to DB
 const DB = knex({
@@ -86,53 +90,86 @@ app.get("/user/:id", async (req, res) => {
     }
 })
 
-//Post requests
-app.post("/signin", async(req, res) => {
+app.post("/signin", async (req, res) => {
     try {
+        // Check if a token is present in the headers
+        const incomingToken = req.headers.authorization;
+        if (incomingToken) {
+            // Verify the incoming token
+            jwt.verify(incomingToken, jwtKey, async (err, decoded) => {
+                console.log(decoded)
+                if (err) {
+                    // Token is not valid
+                    return res.json({
+                        success: false,
+                        message: 'Invalid token'
+                    });
+                }
 
-        if(!req.body || !req.body.email || !req.body.password) {
-            throw new Error("Request parameters are missing");
-        }
+                // Token is valid, user is already authenticated 
+                const userId = decoded.id
+                //Fetch user from DB
 
-        const email = req.body.email;
-        const password = req.body.password;
+                const user = await DB.select('*').from('users').where('id', userId).first();
 
-        // Check if the user and login entry with the provided email exists in the database
-        const user = await DB('users').where({ email }).first();
-        const login = await DB('login').where({ email }).first();
-
-        if(!user || !login) {
-            return res.json({
-                success:false,
-                message: "Incorrect credentials"
-            })
-        }
-
-        bcrypt.compare(password, login.hash, async function(err, answer) {
-            if(!answer){
                 return res.json({
-                    success:false,
-                    message: "Incorrect credentials"
-                })
+                    user: user,
+                    success: true
+                });
+            });
+        } else {
+            // No token in headers, perform regular sign-in logic
+
+            if (!req.body || !req.body.email || !req.body.password) {
+                throw new Error("Request parameters are missing");
             }
 
-            // Update the user's entries count
-            const updatedUser = { ...user, entries: parseInt(user.entries) + 1 };
+            const email = req.body.email;
+            const password = req.body.password;
 
-            // Update the user's entries count in the database
-            await DB('users').where({ email }).update(updatedUser);
+            // Check if the user and login entry with the provided email exists in the database
+            const user = await DB('users').where({ email }).first();
+            const login = await DB('login').where({ email }).first();
 
-            return res.json({
-                user: updatedUser,
-                success:true
+            if (!user || !login) {
+                return res.json({
+                    success: false,
+                    message: "Incorrect credentials"
+                });
+            }
+
+            bcrypt.compare(password, login.hash, async function (err, answer) {
+                if (!answer) {
+                    return res.json({
+                        success: false,
+                        message: "Incorrect credentials"
+                    });
+                }
+
+                // Update the user's entries count
+                const updatedUser = { ...user, entries: parseInt(user.entries) + 1 };
+
+                // Update the user's entries count in the database
+                await DB('users').where({ email }).update(updatedUser);
+
+                // JWT token sign
+                console.log(updatedUser)
+                const userId = updatedUser.id
+                const newToken = jwt.sign({id: userId}, process.env.JWT_SECRET_KEY, {expiresIn: '3h'});
+
+                return res.json({
+                    user: updatedUser,
+                    token: newToken,
+                    success: true
+                });
             });
-        });
+        }
 
     } catch (error) {
         console.log(error);
-        return res.send({success: false, message:error.message});
+        return res.send({ success: false, message: error.message });
     }
-})
+});
 
 app.post("/register", async(req, res) => {
 
