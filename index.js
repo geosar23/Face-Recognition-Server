@@ -6,6 +6,8 @@ const knex = require('knex');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const jwt = require('jsonwebtoken');
+const favicon = require('serve-favicon');
+const path = require('path');
 require('dotenv').config()
 
 //jwt secret key
@@ -50,9 +52,13 @@ const tokenChecker = (req, res, next) => {
 
 
 //Init Server
-app.listen(process.env.SERVER_PORT, () => {
+app.listen(process.env.SERVER_PORT, '0.0.0.0', () => {
     console.log(`Server online on port ${process.env.SERVER_PORT}`)
 })
+
+// Serve static content from frontend
+app.use(favicon(path.join(__dirname, '../Face-Recognition-FrontEnd/public', 'favicon.ico')))
+app.use(express.static(path.join(__dirname, '../Face-Recognition-FrontEnd/build')))
 
 //Get requests
 app.get("/", (req, res) => {
@@ -314,6 +320,18 @@ app.delete("/user/:id", tokenChecker, async (req, res) => {
         return res.json({ success: false, message: error.message });
     }
 });
+
+// It is important to have this after the rest of the endpoints
+if (process.env.NODE_ENV !== 'development') {
+    // Fixes react router issue https://ui.dev/react-router-cannot-get-url-refresh/
+    app.get('/*', (req, res) => {
+      res.sendFile(path.join(__dirname, '../Face-Recognition-FrontEnd/build/index.html'), function (err) {
+        if (err) {
+          throw new Error(err)
+        }
+      })
+    })
+}
 
 app.on('error', (error) => {
     console.error(error)
