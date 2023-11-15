@@ -29,6 +29,26 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(morgan('dev'));
 
+const tokenChecker = (req, res, next) => {
+    // let validToken = false;
+    // let userAuthenticated = false;
+    const incomingToken = req.headers.authorization;
+    jwt.verify(incomingToken, jwtKey, async (err, decoded) => {
+        if (err || !decoded) {
+            return res.status(401).json('Unauthorized');
+        }
+
+        // Token is valid, user is already authenticated 
+        // let validToken = true;
+        //Check if token is from the same user that is loged in 
+        // const tokenUserId = decoded.id;
+        // const bodyUserId = req.body.userId;
+        // const userAuthenticated = (tokenUserId === bodyUserId);
+        return next();
+    });
+}
+
+
 //Init Server
 app.listen(process.env.SERVER_PORT, () => {
     console.log(`Server online on port ${process.env.SERVER_PORT}`)
@@ -39,7 +59,7 @@ app.get("/", (req, res) => {
     res.send(`Server is running on port ${process.env.SERVER_PORT}`);
 });
 
-app.get("/serverKeys", async (req, res) => {
+app.get("/serverKeys", tokenChecker, async (req, res) => {
     try {
         const keys = {
             CLARIFAI_PAT:  process.env.CLARIFAI_PAT,
@@ -55,7 +75,7 @@ app.get("/serverKeys", async (req, res) => {
     }
 });
 
-app.get("/users", async (req, res) => {
+app.get("/users", tokenChecker, async (req, res) => {
     try {        
         const users = await DB.select('*').from('users');
 
@@ -71,7 +91,7 @@ app.get("/users", async (req, res) => {
     }
 })
 
-app.get("/user/:id", async (req, res) => {
+app.get("/user/:id", tokenChecker, async (req, res) => {
     try {
 
         const { id } = req.params;
@@ -237,7 +257,7 @@ app.post("/register", async(req, res) => {
 });
 
 //Put requests
-app.put("/image", async (req, res) => {
+app.put("/user/score", tokenChecker, async (req, res) => {
     try {
 
         const { id, score } = req.body;
@@ -267,7 +287,7 @@ app.put("/image", async (req, res) => {
 })
 
 //Delete Requests
-app.delete("/user/:id", async (req, res) => {
+app.delete("/user/:id", tokenChecker, async (req, res) => {
     try {
         const { id } = req.params;
 
