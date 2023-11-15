@@ -57,8 +57,8 @@ app.listen(process.env.SERVER_PORT, '0.0.0.0', () => {
 })
 
 // Serve static content from frontend
-app.use(favicon(path.join(__dirname, '../Face-Recognition-FrontEnd/public', 'favicon.ico')))
-app.use(express.static(path.join(__dirname, '../Face-Recognition-FrontEnd/build')))
+app.use(favicon(path.join(__dirname, '../Face-Recognition-Client/public', 'favicon.ico')))
+app.use(express.static(path.join(__dirname, '../Face-Recognition-Client/build')))
 
 //Get requests
 app.get("/", (req, res) => {
@@ -325,7 +325,7 @@ app.delete("/user/:id", tokenChecker, async (req, res) => {
 if (process.env.NODE_ENV !== 'development') {
     // Fixes react router issue https://ui.dev/react-router-cannot-get-url-refresh/
     app.get('/*', (req, res) => {
-      res.sendFile(path.join(__dirname, '../Face-Recognition-FrontEnd/build/index.html'), function (err) {
+      res.sendFile(path.join(__dirname, '../Face-Recognition-Client/build/index.html'), function (err) {
         if (err) {
           throw new Error(err)
         }
