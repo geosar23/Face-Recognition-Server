@@ -70,7 +70,7 @@ app.get("/serverKeys", tokenChecker, async (req, res) => {
         }
         return res.json({success: true, data: keys});
     } catch (error) {
-        console.log(error);
+        console.error(error);
         return res.send({success: false, message:error.message});
     }
 });
@@ -86,7 +86,7 @@ app.get("/users", tokenChecker, async (req, res) => {
         return res.json(users)
         
     } catch (error) {
-        console.log(error);
+        console.error(error);
         return res.send({success: false, message:error.message});
     }
 })
@@ -105,7 +105,7 @@ app.get("/user/:id", tokenChecker, async (req, res) => {
         return res.json(user)
         
     } catch (error) {
-        console.log(error);
+        console.error(error);
         return res.send({success: false, message:error.message});
     }
 })
@@ -186,8 +186,8 @@ app.post("/signin", async (req, res) => {
         }
 
     } catch (error) {
-        console.log(error);
-        return res.send({ success: false, message: error.message });
+        console.error(error);
+        res.send({ success: false, message: error.message });
     }
 });
 
@@ -244,14 +244,19 @@ app.post("/register", async(req, res) => {
 
         //Fetch new User and return;
         newUser = await DB('users').where({ email }).first();
+
+        const userId = newUser.id
+        const newToken = jwt.sign({id: userId}, process.env.JWT_SECRET_KEY, {expiresIn: '3h'});
+        
         
         return res.json({
             success: true,
-            user: newUser
+            user: newUser,
+            token: newToken
         });
         
     } catch (error) {
-        console.log(error);
+        console.error(error);
         return res.send({success: false, message:error.message});
     }
 });
@@ -281,7 +286,7 @@ app.put("/user/score", tokenChecker, async (req, res) => {
         });
      
     } catch (error) {
-        console.log(error);
+        console.error(error);
         return res.send({success: false, message:error.message});
     }
 })
@@ -305,10 +310,14 @@ app.delete("/user/:id", tokenChecker, async (req, res) => {
         return res.json({ success: true });
 
     } catch (error) {
-        console.log(error);
+        console.error(error);
         return res.json({ success: false, message: error.message });
     }
 });
+
+app.on('error', (error) => {
+    console.error(error)
+})
 
 
 //Helper functions
