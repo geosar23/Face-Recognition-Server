@@ -26,11 +26,21 @@ const DB = knex({
 });
 
 const app = express();
+
+// Serve static content from frontend
+app.use(favicon(path.join(__dirname, '../Face-Recognition-Client/public', 'favicon.ico')))
+app.use(express.static(path.join(__dirname, '../Face-Recognition-Client/build')))
+
+//Middlewares
 app.use(helmet());
 app.use(cors());
 app.use(bodyParser.json());
 app.use(morgan('dev'));
 app.use((req, res, next) => {
+    // res.setHeader(
+    //     "Content-Security-Policy",
+    //     "default-src 'self'; img-src * data:; connect-src *; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+    // );
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
     next();
 });
@@ -54,15 +64,10 @@ const tokenChecker = (req, res, next) => {
     });
 }
 
-
 //Init Server
 app.listen(process.env.SERVER_PORT, '0.0.0.0', () => {
     console.log(`Server online on port ${process.env.SERVER_PORT}`)
 })
-
-// Serve static content from frontend
-app.use(favicon(path.join(__dirname, '../Face-Recognition-Client/public', 'favicon.ico')))
-app.use(express.static(path.join(__dirname, '../Face-Recognition-Client/build')))
 
 //Get requests
 app.get("/", (req, res) => {
