@@ -30,6 +30,10 @@ app.use(helmet());
 app.use(cors());
 app.use(bodyParser.json());
 app.use(morgan('dev'));
+app.use((req, res, next) => {
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    next();
+});
 
 const tokenChecker = (req, res, next) => {
     // let validToken = false;
