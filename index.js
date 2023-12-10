@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 const favicon = require('serve-favicon');
 const path = require('path');
 require('dotenv').config()
+const _ = require('lodash');
 
 //jwt secret key
 const jwtKey = process.env.JWT_SECRET_KEY;
@@ -67,7 +68,7 @@ const tokenChecker = (req, res, next) => {
 //Init Server
 app.listen(process.env.SERVER_PORT, '0.0.0.0', () => {
     console.log(`Server online on port ${process.env.SERVER_PORT}`)
-})
+});
 
 //Get requests
 app.get("/", (req, res) => {
@@ -104,7 +105,7 @@ app.get("/users", tokenChecker, async (req, res) => {
         console.error(error);
         return res.send({success: false, message:error.message});
     }
-})
+});
 
 app.get("/user/:id", tokenChecker, async (req, res) => {
     try {
@@ -123,8 +124,9 @@ app.get("/user/:id", tokenChecker, async (req, res) => {
         console.error(error);
         return res.send({success: false, message:error.message});
     }
-})
+});
 
+// Post requests
 app.post("/signin", async (req, res) => {
     try {
         // Check if a token is present in the headers
@@ -132,7 +134,6 @@ app.post("/signin", async (req, res) => {
         if (incomingToken) {
             // Verify the incoming token
             jwt.verify(incomingToken, jwtKey, async (err, decoded) => {
-                console.log(decoded)
                 if (err) {
                     // Token is not valid
                     return res.json({
@@ -188,7 +189,6 @@ app.post("/signin", async (req, res) => {
                 await DB('users').where({ email }).update(updatedUser);
 
                 // JWT token sign
-                console.log(updatedUser)
                 const userId = updatedUser.id
                 const newToken = jwt.sign({id: userId}, process.env.JWT_SECRET_KEY, {expiresIn: '3h'});
 
@@ -304,7 +304,53 @@ app.put("/user/score", tokenChecker, async (req, res) => {
         console.error(error);
         return res.send({success: false, message:error.message});
     }
-})
+});
+
+app.put("/user/:id", tokenChecker, async(req, res) => {
+    try {
+        
+        const { id } = req.params;
+        const { name, email, joined, entries, score } = req.body;
+
+        const user = await DB.select('*').from('users').where('id', id).first();
+
+        if(!user) {
+            throw new Error("User not found");
+        }
+
+        const updatedUser = _.cloneDeep(user);;
+
+        if(name) {
+            updatedUser.name = name;
+        }
+
+        if(email) {
+            updatedUser.email = email;
+        }
+
+        if(joined) {
+            updatedUser.joined = joined;
+        }
+
+        if(entries) {
+            updatedUser.entries = entries;
+        }
+
+        if(score) {
+            updatedUser.score = score;
+        }
+
+        await DB('users').where({ id }).update(updatedUser);
+
+        return res.json({
+            success: true,
+        });
+        
+    } catch (error) {
+        console.error(error, error.stack ,req.body);
+        return res.send({success: false, message:error.message});
+    }
+});
 
 //Delete Requests
 app.delete("/user/:id", tokenChecker, async (req, res) => {
@@ -344,7 +390,7 @@ if (process.env.NODE_ENV !== 'development') {
 
 app.on('error', (error) => {
     console.error(error)
-})
+});
 
 
 //Helper functions
