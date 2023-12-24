@@ -18,11 +18,11 @@ const jwtKey = process.env.JWT_SECRET_KEY;
 const DB = knex({
     client: 'pg',
     connection: {
-      host : process.env.DB_HOST,
-      port : process.env.DB_PORT,
-      user : process.env.DB_USER,
-      password : process.env.DB_PASSWORD,
-      database : process.env.DB_NAME
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME
     }
 });
 
@@ -78,32 +78,32 @@ app.get("/", (req, res) => {
 app.get("/serverKeys", tokenChecker, async (req, res) => {
     try {
         const keys = {
-            CLARIFAI_PAT:  process.env.CLARIFAI_PAT,
+            CLARIFAI_PAT: process.env.CLARIFAI_PAT,
             CLARIFAI_USER_ID: process.env.CLARIFAI_USER_ID,
             CLARIFAI_APP_ID: process.env.CLARIFAI_APP_ID,
             CLARIFAI_MODEL_ID: process.env.CLARIFAI_MODEL_ID,
             CLARIFAI_MODEL_VERSION_ID: process.env.CLARIFAI_MODEL_VERSION_ID
         }
-        return res.json({success: true, data: keys});
+        return res.json({ success: true, data: keys });
     } catch (error) {
         console.error(error);
-        return res.send({success: false, message:error.message});
+        return res.send({ success: false, message: error.message });
     }
 });
 
 app.get("/users", tokenChecker, async (req, res) => {
-    try {        
+    try {
         const users = await DB.select('*').from('users');
 
-        if(!users){
+        if (!users) {
             throw new Error("Users not found");
         }
 
         return res.json(users)
-        
+
     } catch (error) {
         console.error(error);
-        return res.send({success: false, message:error.message});
+        return res.send({ success: false, message: error.message });
     }
 });
 
@@ -111,18 +111,18 @@ app.get("/user/:id", tokenChecker, async (req, res) => {
     try {
 
         const { id } = req.params;
-        
+
         const user = await DB.select('*').from('users').where('id', id).first();
 
-        if(!user){
+        if (!user) {
             throw new Error("User not found");
         }
 
         return res.json(user)
-        
+
     } catch (error) {
         console.error(error);
-        return res.send({success: false, message:error.message});
+        return res.send({ success: false, message: error.message });
     }
 });
 
@@ -190,7 +190,7 @@ app.post("/signin", async (req, res) => {
 
                 // JWT token sign
                 const userId = updatedUser.id
-                const newToken = jwt.sign({id: userId}, process.env.JWT_SECRET_KEY, {expiresIn: '3h'});
+                const newToken = jwt.sign({ id: userId }, process.env.JWT_SECRET_KEY, { expiresIn: '3h' });
 
                 return res.json({
                     user: updatedUser,
@@ -206,19 +206,19 @@ app.post("/signin", async (req, res) => {
     }
 });
 
-app.post("/register", async(req, res) => {
+app.post("/register", async (req, res) => {
 
     try {
 
-        if(!req.body || !req.body.email || !req.body.password || !req.body.name ){
+        if (!req.body || !req.body.email || !req.body.password || !req.body.name) {
             return res.json({
                 success: false,
                 message: "Incorrect parameters"
             });
         }
-    
+
         const { email, name, password } = req.body;
-    
+
         const userWithEmail = await DB('users').where({ email }).first();
         const userWithName = await DB('users').where({ name }).first();
 
@@ -228,9 +228,9 @@ app.post("/register", async(req, res) => {
                 message: userWithEmail ? "Email already in use" : "Name already in use"
             });
         }
-    
+
         const hashedPassword = await hashPassword(password);
-        if(!hashedPassword) {
+        if (!hashedPassword) {
             throw new Error("Password hashing failed");
         }
 
@@ -261,18 +261,18 @@ app.post("/register", async(req, res) => {
         newUser = await DB('users').where({ email }).first();
 
         const userId = newUser.id
-        const newToken = jwt.sign({id: userId}, process.env.JWT_SECRET_KEY, {expiresIn: '3h'});
-        
-        
+        const newToken = jwt.sign({ id: userId }, process.env.JWT_SECRET_KEY, { expiresIn: '3h' });
+
+
         return res.json({
             success: true,
             user: newUser,
             token: newToken
         });
-        
+
     } catch (error) {
         console.error(error);
-        return res.send({success: false, message:error.message});
+        return res.send({ success: false, message: error.message });
     }
 });
 
@@ -284,13 +284,13 @@ app.put("/user/score", tokenChecker, async (req, res) => {
 
         const user = await DB.select('*').from('users').where('id', id).first();
 
-        if(!user) {
+        if (!user) {
             throw new Error("User not found");
         }
-        
+
         const updatedScore = parseInt(user.score) + score;
 
-        const updatedUser = {...user, score:updatedScore};
+        const updatedUser = { ...user, score: updatedScore };
 
         // Update the user's entries count in the database
         await DB('users').where({ id }).update(updatedUser);
@@ -299,44 +299,44 @@ app.put("/user/score", tokenChecker, async (req, res) => {
             success: true,
             score: updatedScore
         });
-     
+
     } catch (error) {
         console.error(error);
-        return res.send({success: false, message:error.message});
+        return res.send({ success: false, message: error.message });
     }
 });
 
-app.put("/user/:id", tokenChecker, async(req, res) => {
+app.put("/user/:id", tokenChecker, async (req, res) => {
     try {
-        
+
         const { id } = req.params;
         const { name, email, joined, entries, score } = req.body;
 
         const user = await DB.select('*').from('users').where('id', id).first();
 
-        if(!user) {
+        if (!user) {
             throw new Error("User not found");
         }
 
         const updatedUser = _.cloneDeep(user);;
 
-        if(name) {
+        if (name) {
             updatedUser.name = name;
         }
 
-        if(email) {
+        if (email) {
             updatedUser.email = email;
         }
 
-        if(joined) {
+        if (joined) {
             updatedUser.joined = joined;
         }
 
-        if(entries) {
+        if (entries) {
             updatedUser.entries = entries;
         }
 
-        if(score) {
+        if (score) {
             updatedUser.score = score;
         }
 
@@ -345,10 +345,10 @@ app.put("/user/:id", tokenChecker, async(req, res) => {
         return res.json({
             success: true,
         });
-        
+
     } catch (error) {
-        console.error(error, error.stack ,req.body);
-        return res.send({success: false, message:error.message});
+        console.error(error, error.stack, req.body);
+        return res.send({ success: false, message: error.message });
     }
 });
 
@@ -380,11 +380,11 @@ app.delete("/user/:id", tokenChecker, async (req, res) => {
 if (process.env.NODE_ENV !== 'development') {
     // Fixes react router issue https://ui.dev/react-router-cannot-get-url-refresh/
     app.get('/*', (req, res) => {
-      res.sendFile(path.join(__dirname, '../Face-Recognition-Client/build/index.html'), function (err) {
-        if (err) {
-          throw new Error(err)
-        }
-      })
+        res.sendFile(path.join(__dirname, '../Face-Recognition-Client/build/index.html'), function (err) {
+            if (err) {
+                throw new Error(err)
+            }
+        })
     })
 }
 
@@ -396,14 +396,18 @@ app.on('error', (error) => {
 //Helper functions
 function hashPassword(password) {
     return new Promise((resolve, reject) => {
-      bcrypt.hash(password, null, null, (err, hash) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(hash);
-        }
-      });
+        bcrypt.hash(password, null, null, (err, hash) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(hash);
+            }
+        });
     });
+}
+
+const sanitizeUserEmail = (email) => {
+
 }
 
 // //---------------------------------------------------------
